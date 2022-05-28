@@ -55,7 +55,7 @@ def extract_url(text: str) -> Optional[str]:
         Return url if present in the given string.
     """
     regex_extract = re.search("(?P<url>https?://[^\s]+)", text)
-    return regex_extract.group("url") if regex_extract else None
+    return regex_extract["url"] if regex_extract else None
 
 
 def scrap_url(_url: str) -> BeautifulSoup:
@@ -365,21 +365,7 @@ def default_message(message: types.Message):
     url: str = extract_url(message.text)
     # adding wait time as not to hit the bot rate limits - 429 telegram API error
     # time.sleep(0.4)
-    if not message.chat.id in server.config["BLOCKED_USERS"]:
-        if url:
-            send_image(message, url)
-        else:
-            bot.send_chat_action(message.chat.id, "typing")
-            msg_content: str = (
-                f"Hi {message.from_user.first_name},\n\n"
-                f"Invalid url - {message.text}.\nPlease check the url and retry."
-            )
-            bot.send_message(
-                message.chat.id,
-                msg_content,
-                disable_web_page_preview=True,
-            )
-    else:
+    if message.chat.id in server.config["BLOCKED_USERS"]:
         bot.send_chat_action(message.chat.id, "typing")
         msg_content: str = (
             f"Hi {message.from_user.first_name},\n\n"
@@ -391,8 +377,22 @@ def default_message(message: types.Message):
             disable_web_page_preview=True,
         )
 
+    elif url:
+        send_image(message, url)
+    else:
+        bot.send_chat_action(message.chat.id, "typing")
+        msg_content: str = (
+            f"Hi {message.from_user.first_name},\n\n"
+            f"Invalid url - {message.text}.\nPlease check the url and retry."
+        )
+        bot.send_message(
+            message.chat.id,
+            msg_content,
+            disable_web_page_preview=True,
+        )
 
-@server.route("/" + TOKEN, methods=["POST"])
+
+@server.route(f"/{TOKEN}", methods=["POST"])
 def getMessage():
     bot.process_new_updates(
         [types.Update.de_json(request.stream.read().decode("utf-8"))]
